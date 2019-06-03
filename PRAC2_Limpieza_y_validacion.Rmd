@@ -506,7 +506,7 @@ Hay muchos otros factores que están relacionados con los buenos vinos. Muchos d
 
 Crear el archivo limpio
 ```{r}
-my.newfile <- "garabatos_fichero_clean.csv"
+my.newfile <- "fichero_clean.csv"
 write.csv(data, file=my.newfile, row.names = FALSE)
 
 ```
