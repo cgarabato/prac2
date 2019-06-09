@@ -1,6 +1,6 @@
 ---
 title: "Práctica 2: Limpieza y validación de los datos"
-author: "Carlos Garabatos Fernández"
+author: "Carlos Garabatos Fernández - Jorge Ronchel Diaz-Leante"
 date: '`r format(Sys.Date(),"%e de %B, %Y")`'
 output:
   html_document:
@@ -35,6 +35,7 @@ library('caret')
 library('ROCR')
 library('pROC')
 library(corrplot)
+library(nortest)
 ```
 
 ****
@@ -110,6 +111,13 @@ head(data)
 
 El archivo se denomina *`r myfile`*, contiene `r nrow(data)` registros y `r ncol(data)` variables. Estas variables son: `r toString(names(data))`
 
+Ejecutamos el comando summary en el que se aprecian los percentiles 25 y 75 de cada variable, su media, mediana y valores mínimo y máximo
+```{r, echo=FALSE}
+# data var anaysis
+summary(data)
+
+```
+
 ****
 ## Tipo de variable estadística de cada variable
 ****
@@ -134,6 +142,23 @@ De la tabla anterior se desprende que existe un desequilibrio de clase. Hay 1599
 Podríamos convertir la variable quality a tipo factor pero de momento nos interesa consevarla para tratarla como número. Si es necesario mas adelante crearemos una variable factor equivalente.
 A priori todos los atributos presentes en el conjunto de datos se corresponden con características influyentes en la variable de salida del conjunto de datos, que es la calidad del vino. 
 
+##Normalizacion de variables
+```{r}
+#Para revisar si las variables pueden ser candidatas a la normalización miramos las graficas de quantile-quantile plot y el histograma.
+
+par(mfrow=c(2,2))
+for(i in 1:ncol(data)) {
+  if (is.numeric(data[,i])){
+    qqnorm(data[,i],main = paste("Normal Q-Q Plot for ",colnames(data)[i]))
+    qqline(data[,i],col="red")
+    hist(data[,i],
+    main=paste("Histogram for ", colnames(data)[i]),
+    xlab=colnames(data)[i], freq = FALSE)
+  }
+}
+```
+
+Los resultados del quantile-quantile plot nos indica que las variables pueden ser candidatas a la normalización si es necesario.
 
 #Limpieza de los datos.
 ##¿Los datos contienen ceros o elementos vacíos? ¿Cómo gestionarías cada uno de estos casos?
@@ -257,7 +282,7 @@ Observamos valores extremos en todas las variables, pero son principalmente evid
 ##Selección de los grupos de datos que se quieren analizar/comparar (planificación de los análisis a aplicar).
 
 ```{r}
-# El acido citrico es de interes porque si aparece significa que la fermentación del vino no se a completado o se ha añadido artificialmente para mejorar su calidad.
+# El acido citrico es de interes porque si aparece significa que la fermentación del vino no se ha completado o se ha añadido artificialmente para mejorar su calidad.
 data.sinC=data[data$citric.acid==0,] # Sin acido citrico
 data.conC=data[data$citric.acid>0,]# Con acido citrico
 
@@ -268,28 +293,12 @@ data.pocoA=data[data$alcohol<median(alcohol),]# Con poco alcohol
 #mean(data.pocoA$alcohol)
 #mean(data.muchoA$alcohol)
 ```
-Pueden apreciarse niveles de lalcohol ascendentes respecto al nivel de calidad.
+Pueden apreciarse niveles de alcohol ascendentes respecto al nivel de calidad.De todas formas, más adelante se realizará un análisis de varianzas respecto a estas dos variables para probar su influencia en la calidad del vino.
 
 ##Comprobación de la normalidad y homogeneidad de la varianza.
 
-```{r}
-#Para revisar si las variables pueden ser candidatas a la normalización miramos las graficas de quantile-quantile plot y el histograma.
-
-par(mfrow=c(2,2))
-for(i in 1:ncol(data)) {
-  if (is.numeric(data[,i])){
-    qqnorm(data[,i],main = paste("Normal Q-Q Plot for ",colnames(data)[i]))
-    qqline(data[,i],col="red")
-    hist(data[,i],
-    main=paste("Histogram for ", colnames(data)[i]),
-    xlab=colnames(data)[i], freq = FALSE)
-  }
-}
-```
-
-Los resultados del quantile-quantile plot nos indica que las variables pueden ser candidatas a la normalización
-si es necesario.
-Para revisar si las variables estan normalizadas se aplica el test de Shapiro Wilk en cada variables numérica.
+Para determinar si los datos no siguen una distribución normal, hay que comparar el p-valor con el nivel de significancia. Por lo general, un nivel de significancia (denotado como α o alfa) de 0.05 funciona adecuadamente. Un nivel de significancia de 0.05 indica un riesgo de 5% de concluir que los datos no siguen una distribución normal, cuando los datos sí siguen una distribución normal.
+Para revisar si las variables siguen una distribución normal se aplica el test de Shapiro Wilk en cada variables numérica.
 ```{r}
 
 shapiro.test(data[,1])
@@ -304,11 +313,10 @@ shapiro.test(data[,9])
 shapiro.test(data[,10])
 shapiro.test(data[,11])
 
-library(nortest)
 alpha = 0.05
 col.names = colnames(data)
 for (i in 1:ncol(data)) {
-  if (i == 1) cat("Variables que no siguen una distribución normal:\n")
+  if (i == 1) cat("\nVariables que no siguen una distribución normal:\n")
   if (is.integer(data[,i]) | is.numeric(data[,i])) {
     p_val = ad.test(data[,i])$p.value
     if (p_val < alpha) {
@@ -321,10 +329,6 @@ for (i in 1:ncol(data)) {
 }
 
 ```
-
-El test nos indica que ninguna variable esta normalizada, ya que el p-valor es inferior al coeficiente 0.05, por lo que se puede rechazar la hipotesis nula y entender que no es normal.
-Que no sea normal no quiere decir que no pueda ser normalizable, ya que segun el teorema del limite central al tener mas de 30 elementos en las observaciones podemos aproximarla como una distribución normal de media 0 y desviación estandard 1.
-
 
 #Homogeneidad de varianzas
 
@@ -347,15 +351,16 @@ de ambas muestras son homogéneas.
 
 En función de los datos y el objetivo del estudio, aplicar pruebas de contraste de hipótesis, correlaciones, regresiones, etc. Aplicar al menos tres métodos de análisis diferentes.
 
-### ¿Variables cuantitativas que mas influyen en el precio?
+### ¿Variables cuantitativas que mas influyen en la calidad?
 En primer lugar, procedemos a realizar un análisis de correlación entre las distintas variables
-para determinar cuáles de ellas ejercen una mayor influencia sobre el precio final.
+para determinar cuáles de ellas ejercen una mayor influencia sobre la calidad.
 Para ello, se utilizará el coeficiente de correlación de Spearman, puesto que hemos visto que
 tenemos datos que no siguen una distribución normal.
 ```{r}
-corrplot(cor(data[, 1 : 12 ]), type = "lower", method = "number")
-
-cor ( x = data [, 1 : 12 ], y = data$quality )
+#corrplot(cor(data[, 1 : 12 ]), type = "lower", method = "number")
+#cor ( x = data [, 1 : 12 ], y = data$quality )
+data.cor <- cor(data [, 1 : 12 ], method = c("spearman"))
+corrplot(data.cor)
 
 ```
 Identificamos que las variables más correlacionadas con la calidad son:
@@ -375,6 +380,16 @@ Dióxido de azufre total (-)
 Densidad (-)
 
 Cloruros (-)
+
+Además, vamos a ver como influyen algunas de las variables entre sí, viendo la correlación existente entre ellas mismas, a parte de entre ellas y la calidad.
+
+En cuanto a la acidez fija, vemos que tiene correlación positiva con el ácido cítrico e incluso podría haber algo de redundancia, ya que el ácido cítrico es uno de los ácidos fijos.
+Además, muestra correlación negativa con el ph y la acidez volátil. 
+
+La acidez volátil, muestra una correlación negativa fuerte con el ácido cítrico, así como con la calidad, cómo se ha comentado anteriormente.
+
+En cuánto a la densidad, se observa una correlación negativa con el alcohol y positiva con la acidez fija y cítrica y el ph. Destacar que la correlación con la acidez fija es bastante fuerte.
+
 
 ###Modelo de regresión lineal
 Es interesante poder realizar predicciones sobre la calidad del vino dadas sus características. 
@@ -409,7 +424,6 @@ El resumen indica que los valores de p para la variable de entrada restante son 
 
 El R2 ajustado ha aumentado ligeramente, pero aún no es alto en 0.3567, pero el valor p del R2 sigue siendo <0.05, por lo que tenemos al menos un 95% de confianza de que existe una relación entre al menos algunas de las variables de entrada y la clasificación de calidad.
 
-
 ####Predicciones
 Se prueba el poder predictivo del modelo utilizando valores reales de variables de entrada
 ```{r}
@@ -434,26 +448,114 @@ La pérdida de información de relación al tratar la variable de respuesta ordi
 La estrecha distribución de los valores de respuesta (Q1 = 5 Q3 = 6) proporcionó poca información para que la regresión lineal determine correctamente las relaciones para los valores fuera del primer y tercer cuartil.
 El R2 ajustado no es alto en 0.3567
 
+###Modelo de regresión logística sobre la calidad del vino
 
+Vamos a separar la calidad del vino en dos tipos según un umbral de decisión e valor 6, basándonos en la media de la calidad. Por tanto, todo lo que quede por encima será de calidad ALTA mientras que lo que quede por debajo será de calidad BAJA. Para ello, vamos a crear una nueva variable binaria de nombre bad_quality y sobre ella aplicaremos una regresión logística. De tal manera, que si calidad es mala(menor que 6), bad_quality = 1 y sino bad_quality = 0(calidad buena). Utilizaremos las mismas variables para probar el modelo que las utilizadas en la regresión lineal y veremos su significancia en el mismo.
+
+```{r}
+# Creación variable binarias y modelo binario
+data$bad_quality<- (data$quality < 6)*1
+data$bad_quality<- as.factor(data$bad_quality)
+modelo_bin <- glm(bad_quality ~ volatile.acidity + chlorides + free.sulfur.dioxide + 
+    total.sulfur.dioxide + pH + sulphates + alcohol, family=binomial, data=data)
+summary(modelo_bin)
+```
+Podemos determinar que todos los regresores tienen influencia significativa (Pr(>|z|) por debajo de 0.5), siendo el que menos influencia tiene el ph con un Pr de 0.4.  
+
+Además, podemos concluir que conforme aumenta "chlorides" y "volatile.acidity" desciende la calidad del vino considerablemente, siendo de manera más notoria en "chloridres". Además, vemos que cuanto menos sulfatos y menos alcohol, la calidad también tiende a empeorar, siendo más significativo en el caso de los sulfatos.
+
+Veamos ahora la predicción con los mismos valores que para el caso de predicción anterior
+
+```{r}
+# Predicción con modelo de regresión logística
+
+# Se espera bad_quality = 0
+predict(modelo_bin, data.frame( alcohol=9.8, chlorides=0.075, free.sulfur.dioxide=17.0, pH=3.16, sulphates=0.58, total.sulfur.dioxide=60,volatile.acidity=0.280), type="response")
+
+# Se espera bad_quality = 1
+predict(modelo_bin, data.frame( alcohol=9.4, chlorides=0.076, free.sulfur.dioxide=11.0, pH=3.51, sulphates=0.56, total.sulfur.dioxide=34,volatile.acidity=0.7), type="response")
+
+# Se espera bad_quality = 0
+predict(modelo_bin, data.frame( alcohol=10, chlorides=0.065, free.sulfur.dioxide=15.0, pH=3.39, sulphates=0.47, total.sulfur.dioxide=21,volatile.acidity=0.65), type="response")
+
+```
+En este caso, obtenemos resultados correctos para la predicción 1 y 2 pero incorrecto para la tercera . Comentar también que en el primer caso, la calidad era 6, que era el valor de calidad medio, por tanto, en este caso lo hemos incluido en el grupo de calidad buena, pero podríamos haberlo incluido en calidad mala, la cosa es que había que decidir al ser el valor medio. Lo demuestra el valor obtenido de 0.47 (cercano a 0.5)
+
+De todas formas, para salir de dudas, vamos a realizar el mismo procedimiento incluyendo el 6 dentro de bad_quality.
+```{r}
+# Creación variable binarias y modelo binario
+data$bad_quality<- (data$quality <= 6)*1
+data$bad_quality<- as.factor(data$bad_quality)
+modelo_bin2 <- glm(bad_quality ~ volatile.acidity + chlorides + free.sulfur.dioxide + 
+    total.sulfur.dioxide + pH + sulphates + alcohol, family=binomial, data=data)
+summary(modelo_bin2)
+```
+Nuevamente obtenemos que todos los regresores osn significativos, siendo esta vez el free.sulfur.dioxide el de menor influencia en el modelo. Las variables que más influyen en la mejora y empeoramiento de calidad son las mismas que las comentadas anteriormente en el anterior modelo de regresión lgística.
+
+```{r}
+# Predicción con modelo de regresión logística
+
+# Se espera bad_quality = 1
+predict(modelo_bin2, data.frame( alcohol=9.8, chlorides=0.075, free.sulfur.dioxide=17.0, pH=3.16, sulphates=0.58, total.sulfur.dioxide=60,volatile.acidity=0.280), type="response")
+
+# Se espera bad_quality = 1
+predict(modelo_bin2, data.frame( alcohol=9.4, chlorides=0.076, free.sulfur.dioxide=11.0, pH=3.51, sulphates=0.56, total.sulfur.dioxide=34,volatile.acidity=0.7), type="response")
+
+# Se espera bad_quality = 0
+predict(modelo_bin2, data.frame( alcohol=10, chlorides=0.065, free.sulfur.dioxide=15.0, pH=3.39, sulphates=0.47, total.sulfur.dioxide=21,volatile.acidity=0.65), type="response")
+```
+
+En este caso, acierta en los dos primeros valores y vuelve a fallar en el tercero. De todas formas, observamos como el valor de AIC es menor en este segundo modelo, siendo por tanto más fiable. Ahora, en comparación con el modelo linear planteado antes, no sabria asegurar cual funciona mejor, ya que en mi opinión harían falta más pruebas en profundidad para llegar a una conclusión óptima.
 
 ###¿La calidad del vino es superior si contiene más alcohol?
 
 La segunda prueba estadística que se aplicará consistirá en un contraste de hipótesis sobre
 dos muestras para determinar si la calidad de vino es superior dependiendo de si contiene más alcohol. Para ello, tendremos dos muestras: la primera de ellas se corresponderá con la aproximadamente al mitad que tiene menos y la segunda el resto.
 
-Se debe destacar que un test paramétrico como el que a continuación se utiliza necesita que
-los datos sean normales, si la muestra es de tamaño inferior a 30. Como en nuestro caso,
-n > 30, el contraste de hipótesis siguiente es válido (aunque podría utilizarse un test no
-paramétrico como el de Mann-Whitney).
+Aunque los datos se puedan aproximar por seguir una distribución normal, se ha demostrado que la calidad no presenta homogeneidad de varianzas cuando se divide en dos grupos de alcohol, por lo que la prueba de t-test no será del todo adecuada y será mejor aplicar un test no paramétrico como Mann-Whitney.
 
+El test de Mann–Whitney–Wilcoxon (WMW), también conocido como Wilcoxon rank-sum test o u-test, es un test no paramétrico que contrasta si dos muestras proceden de poblaciones equidistribuidas.
+
+La idea en la que se fundamenta este test es la siguiente: si las dos muestras comparadas proceden de la misma población, al juntar todas las observaciones y ordenarlas de menor a mayor, cabría esperar que las observaciones de una y otra muestra estuviesen intercaladas aleatoriamente. Por lo contrario, si una de las muestras pertenece a una población con valores mayores o menores que la otra población, al ordenar las observaciones, estas tenderán a agruparse de modo que las de una muestra queden por encima de las de la otra.
+
+R contiene una función llamada wilcox.test() que realiza un test de Mann–Whitney–Wilcoxon entre dos muestras cuando se indica que paired = False y además genera el intervalo de confianza para la diferencia de localización.
 ```{r}
-t.test(data.pocoA, data.muchoA, alternative = "less")
+#t.test(data.pocoA, data.muchoA, alternative = "less")
+wilcox.test(x = data.pocoA$quality, y = data.muchoA$quality, alternative = "less", mu = 0,
+            paired = FALSE, conf.int = 0.95)
+
 
 ```
 
 Puesto que obtenemos un p-valor menor que el valor de significación fijado, rechazamos la
 hipótesis nula. Por tanto, podemos concluir que, efectivamente, la calidad del vino es
 superior si éste trae consigo más alcohol.
+
+###Análisis de varianzas ANOVA
+Vamos a realizar un análisis de varianzas ANOVA para dos variables que consideramos significativas respecto a la calidad del vino para probar si deverdad influyen en la calidad final. Vamos a plantear un análisis de varianzas ANOVA con las variables de fixed.acidity y alcohol planteadas al inicio como grupos de valores a analizar para comprobar si influyen en la calidad del vino.
+
+En el ANOVA de una vía la hipótesis nula H0 es que no hay diferencia entre las medias y la hipótesis alternativa H1 que al menos una de las medias difiere del resto. En nuestro caso, si el peso de cada individuo varía según el grupo de edad al que pertenece el sujeto.
+
+Hipótesis nula es H0:μ1=μ2=μ3
+
+Hipótesis alternativa es al menos una es diferente H1:μ1≠μ2≠μ3
+
+El modelo ANOVA contrasta las diferencias en las medias en la calidad entre los vinos según el nivel de alcohol y la acidez fija. Para estimar el modelo ANOVA de una vía se usa la función aov( ), que sigue la estructura aov( variable dependiente ~ factor )
+```{r}
+anova1 <- aov( quality ~ fixed.acidity, # var. cuantitativa con respecto al factor
+                data = data )
+
+summary( anova1 ) # para ver los rdos del anova
+```
+Con un p-valor de 6.5e-07 < 0.05 podemos decir que la acidez fija tiene un peso significativo en la calidad del vino.
+
+```{r}
+anova2 <- aov( quality ~ alcohol, # var. cuantitativa con respecto al factor
+                data = data )
+
+summary( anova2 ) # para ver los rdos del anova
+```
+Con un p-valor de <2e-16 < 0.05 podemos decir que el alcohol tiene un peso significativo en la calidad del vino.
 
 #Representación de los resultados a partir de tablas y gráficas.
 
@@ -494,12 +596,13 @@ Se ha optado por incluir los valores extremos en los análisis dado que parecen 
 Se han realizado tres tipos de pruebas estadísticas sobre un conjunto de datos que se correspondía con diferentes variables relativas al vino con motivo de cumplir en la medida de lo posible con el objetivo que se planteaba al comienzo. Para cada una de ellas, hemos podido ver cuáles son los resultados que arrojan (entre otros, mediante tablas) y qué conocimientos pueden extraerse a partir de ellas.
 
 El análisis de correlación y el contraste de hipótesis nos ha permitido conocer cuáles de estas variables ejercen una mayor influencia sobre la calidad del vino
-El modelo de regresión lineal obtenido resulta de utilidad a la hora de realizar predicciones para esta variable dadas unas características concretas.Aunque deberia probarse con otro tipo de modelo de regresión buscando mejorar el modelo.
+El modelo de regresión lineal obtenido resulta de utilidad a la hora de realizar predicciones para esta variable dadas unas características concretas.Asimismo, se ha aplicado un modelo de regresión logística con la variable de calidad binaria entre calidad buena y mala. Sin embargo, siguen faltando pruebas para determinar cual de todos los modelos es más óptimo.
+
+Finalmente se ha realizado un análisis ANOVA de las variables de fixed.acidity y alcohol llegando a la conclusión nuevamente de que influyen en la calidad del vino.
 
 Una limitación del análisis es que los datos actuales consisten en muestras recopiladas de una región específica de Portugal. Será interesante obtener conjuntos de datos en varias regiones vinícolas para eliminar cualquier sesgo creado por alguna cualidad específica del producto, 
 
 Hay muchos otros factores que están relacionados con los buenos vinos. Muchos de ellos están relacionados con olores y sabores y no con propiedades químicas y percepciones gustativas como las que tenemos en nuestro conjunto de datos. Aunque nuestras variables son un tanto explicativas de lo que tenemos, también hemos visto algunos casos en los que deben ser otras explicaciones para niveles de calidad altos o bajos.
-
 
 
 # Exportación del código en R y de los datos producidos.
@@ -510,3 +613,16 @@ my.newfile <- "fichero_clean.csv"
 write.csv(data, file=my.newfile, row.names = FALSE)
 
 ```
+
+Referencias:
+
+https://rpubs.com/Joaquin_AR/218456 (contraste de hipótesis)
+
+https://rpubs.com/Joaquin_AR/218466 (homogeneidad de la varianza)
+
+https://rpubs.com/Joaquin_AR/218465 (análisis normalidad)
+
+https://support.minitab.com/es-mx/minitab/18/help-and-how-to/statistics/basic-statistics/how-to/normality-test/interpret-the-results/key-results/
+
+Recursos de la UOC de la asignatura estadística avanzada
+
