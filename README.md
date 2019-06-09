@@ -1,5 +1,6 @@
 # Práctica 2: Limpieza y validación de los datos
 ## Descripción
+URL: https://github.com/cgarabato/prac2
 
 El objetivo de esta actividad será el tratamiento de un dataset,
 ● Red Wine Quality (https://www.kaggle.com/uciml/red-wine-quality-cortez-et-al-2009)
