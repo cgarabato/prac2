@@ -12,7 +12,7 @@ La actividad ha sido realizada por Carlos Garabatos y Jorge Ronchel.
 El contenido de este proyecto esta licencia bajo la Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International, y el código fuente usadao para mostrar este contenido esta licenciado bajo la MIT license.
 
 ## Ficheros del código fuente
-1. cgarabatos_prac2.Rmd: Fichero en codigo R
-1. cgarabatos_prac2.html: Fichero de analisis en html.en codigo R
+1. PRAC2_Limpieza_y_validacion.Rmd: Fichero en codigo R
+1. PRAC2_Limpieza_y_validacion.html: Fichero de analisis en html.en codigo R
 1. README.md: 
-1. csv: Resultado de la exportación de datos.
+1. fichero_clean.csv: Resultado de la exportación de datos.
