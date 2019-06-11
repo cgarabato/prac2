@@ -330,7 +330,7 @@ for (i in 1:ncol(data)) {
 
 ```
 
-#Homogeneidad de varianzas
+###Homogeneidad de varianzas
 
 Estudiamos la homogeneidad de varianzas mediante la aplicación de un test de Fligner-Killeen. En este caso, estudiaremos esta homogeneidad en cuanto a los grupos conformados por vinos que presentan un nivel de alcohol mas alto que los otros.En el siguiente test, la hipótesis nula consiste en que ambas varianzas son iguales.
 
@@ -347,7 +347,7 @@ Puesto que obtenemos un p-valor superior a 0,05, aceptamos la hipótesis de que 
 de ambas muestras son homogéneas.
 
 
-##Aplicación de pruebas estadísticas para comparar los grupos de datos. 
+#Aplicación de pruebas estadísticas para comparar los grupos de datos. 
 
 En función de los datos y el objetivo del estudio, aplicar pruebas de contraste de hipótesis, correlaciones, regresiones, etc. Aplicar al menos tres métodos de análisis diferentes.
 
