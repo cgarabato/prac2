@@ -542,24 +542,53 @@ Hipótesis alternativa es al menos una es diferente H1:μ1≠μ2≠μ3
 
 El modelo ANOVA contrasta las diferencias en las medias en la calidad entre los vinos según el nivel de alcohol y la acidez fija. Para estimar el modelo ANOVA de una vía se usa la función aov( ), que sigue la estructura aov( variable dependiente ~ factor )
 ```{r}
-anova1 <- aov( quality ~ fixed.acidity, # var. cuantitativa con respecto al factor
-                data = data )
+data$quality <- as.factor(data$quality)
+ggplot(data = data, aes(x = quality, y = fixed.acidity, color = quality)) +
+    geom_boxplot() +
+    theme_bw()
 
-summary( anova1 ) # para ver los rdos del anova
 ```
-Con un p-valor de 6.5e-07 < 0.05 podemos decir que la acidez fija tiene un peso significativo en la calidad del vino.
 
 ```{r}
-anova2 <- aov( quality ~ alcohol, # var. cuantitativa con respecto al factor
+anova1 <- aov(fixed.acidity ~ quality, # var. cuantitativa con respecto al factor
                 data = data )
+summary( anova1 ) # para ver los rdos del anova
+```
 
+Con un p-valor de 8,79e-06 < 0.05 podemos decir que la acidez fija tiene un peso significativo en la calidad del vino.
+Además el tamaño de las cajas es similar en todos los niveles por lo que no hay indicios de falta de homocedasticidad. Los grupos de calidad parecen seguir una distribución simétrica.
+
+```{r}
+plot( anova1 )
+```
+
+La representación gráfica de los residuos no muestra falta de homocedasticidad (gráfico Residuals vs Fitted) y en el qqplot los residuos se distribuyen muy cercanos a la linea de la normal (gráfico Normal Q-Q).
+
+```{r}
+ggplot(data = data, aes(x = quality, y = alcohol, color = quality)) +
+    geom_boxplot() +
+    theme_bw()
+
+```
+
+```{r}
+
+anova2 <- aov( alcohol ~ quality  , # var. cuantitativa con respecto al factor
+                data = data )
 summary( anova2 ) # para ver los rdos del anova
 ```
-Con un p-valor de <2e-16 < 0.05 podemos decir que el alcohol tiene un peso significativo en la calidad del vino.
+Con un p-valor de <2e-16 < 0.05 podemos decir que el alcohol tiene un peso significativo en la calidad del vino. Se observan claramente valores de calidad crecientes a partir de nivel 6 de calidad conforme aumenta el nivel de alcohol.
+
+```{r}
+plot( anova2 ) # para ver los rdos del anova
+
+```
+La representación gráfica de los residuos no muestra falta de homocedasticidad (gráfico Residuals vs Fitted) y en el qqplot los residuos se distribuyen muy cercanos a la linea de la normal (gráfico Normal Q-Q).
 
 #Representación de los resultados a partir de tablas y gráficas.
 
 ```{r}
+data$quality <- as.integer(data$quality)
 ggplot(aes(x=quality), data=data)+
   geom_histogram(aes(color=I('black'),fill=I('orange')),binwidth=1)+
   scale_y_continuous(lim=c(0,900), breaks=seq(0,600,100))+
